@@ -27,6 +27,7 @@ class GestureRecognizer:
         # 用于平滑识别的队列
         self.gesture_history = deque(maxlen=5)
         self.current_gesture = None
+        self.previous_gesture = None  # 记录上一次的确认手势
         
     def recognize_gesture(self, finger_states):
         """
@@ -36,22 +37,16 @@ class GestureRecognizer:
             finger_states: 手指状态列表 [拇指, 食指, 中指, 无名指, 小指]
             
         Returns:
-            str: 识别到的手势名称，如果未识别到返回None
+            tuple: (识别到的手势名称, 是否是新手势变化)
         """
         if not finger_states:
-            return None
-        
-        # 检查冷却时间
-        current_time = time.time()
-        if current_time - self.last_gesture_time < self.cooldown:
-            return self.current_gesture
+            return None, False
         
         # 匹配手势
         recognized_gesture = None
         min_distance = float('inf')
         
         for gesture_name, gesture_states in self.gestures.items():
-            # 计算欧氏距离
             distance = self._calculate_state_distance(finger_states, gesture_states)
             
             if distance < min_distance and distance < FINGER_STATE_THRESHOLD * 5:
@@ -64,14 +59,22 @@ class GestureRecognizer:
             
             # 如果连续多次识别到相同手势，才确认
             if len(self.gesture_history) >= 3 and len(set(list(self.gesture_history)[-3:])) == 1:
+                # 检查是否是新手势（与之前不同）
+                is_new_gesture = (self.current_gesture != recognized_gesture)
+                
                 self.current_gesture = recognized_gesture
-                self.last_gesture_time = current_time
-                return recognized_gesture
+                
+                # 只在手势变化或冷却时间过后才更新
+                current_time = time.time()
+                if is_new_gesture or (current_time - self.last_gesture_time >= self.cooldown):
+                    self.last_gesture_time = current_time
+                    self.previous_gesture = self.current_gesture
+                    return recognized_gesture, is_new_gesture
         else:
             self.gesture_history.clear()
             self.current_gesture = None
         
-        return self.current_gesture
+        return self.current_gesture, False
     
     def _calculate_state_distance(self, states1, states2):
         """
@@ -126,4 +129,5 @@ class GestureRecognizer:
         """重置识别器状态"""
         self.gesture_history.clear()
         self.current_gesture = None
+        self.previous_gesture = None
         self.last_gesture_time = 0
