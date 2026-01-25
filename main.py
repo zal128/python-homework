@@ -81,9 +81,9 @@ def main():
                 finger_states = hand_tracker.get_finger_states(landmarks)
                 
                 if finger_states:
-                    current_gesture = gesture_recognizer.recognize_gesture(finger_states)
+                    current_gesture, is_new_gesture = gesture_recognizer.recognize_gesture(finger_states)
                     
-                    if current_gesture:
+                    if current_gesture and is_new_gesture:
                         current_action = gesture_recognizer.get_gesture_action(current_gesture)
                         
                         if current_action:
