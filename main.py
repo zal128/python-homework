@@ -34,6 +34,7 @@ def main():
         fps_counter = FPSCounter()
         
         print("✓ Components initialized successfully")
+        print(f"  Volume control: {'Available' if action_executor.volume_interface else 'Not available'}")
         
     except Exception as e:
         print(f"✗ Failed to initialize components: {e}")
@@ -83,11 +84,41 @@ def main():
                 if finger_states:
                     current_gesture, is_new_gesture = gesture_recognizer.recognize_gesture(finger_states)
                     
-                    if current_gesture and is_new_gesture:
+                    if current_gesture:
                         current_action = gesture_recognizer.get_gesture_action(current_gesture)
                         
                         if current_action:
-                            action_executor.execute_action(current_action)
+                            # 检测是否需要冻结鼠标（手势切换时）
+                            if gesture_recognizer.mode == "MOUSE" and is_new_gesture and current_action != "mouse_move":
+                                # 从移动切换到其他手势（点击、双击等）时，冻结鼠标0.5秒
+                                action_executor.mouse_freeze_until = time.time() + 0.5
+                            
+                            # 鼠标模式特殊处理
+                            if gesture_recognizer.mode == "MOUSE":
+                                if current_action == "mouse_move":
+                                    # 鼠标移动持续执行（不需要新手势）
+                                    action_executor.execute_action(current_action, landmarks=landmarks)
+                                elif current_action == "mouse_drag":
+                                    # 拖拽持续执行
+                                    action_executor.execute_action(current_action, landmarks=landmarks)
+                                elif is_new_gesture:
+                                    # 其他鼠标动作只在新手势时执行
+                                    action_executor.execute_action(current_action)
+                                    
+                                    # 如果是切换模式（在鼠标模式下也需要切换）
+                                    if current_action == "toggle_mode":
+                                        gesture_recognizer.toggle_mode(current_gesture)
+                            elif is_new_gesture:
+                                # 主模式：只在新手势时执行
+                                action_executor.execute_action(current_action)
+                                
+                                # 如果是切换模式
+                                if current_action == "toggle_mode":
+                                    gesture_recognizer.toggle_mode(current_gesture)
+            else:
+                # 没有检测到手，停止拖拽
+                if gesture_recognizer.mode == "MOUSE" and action_executor.mouse_last_action == "mouse_drag":
+                    action_executor.stop_drag()
             
             fps = fps_counter.update()
             
