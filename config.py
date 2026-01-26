@@ -23,10 +23,16 @@ GESTURE_COOLDOWN = 0.5  # 手势识别冷却时间（缩短到0.5秒，提高响
 BRIGHTNESS_STEP = 10  # 亮度调节步长
 VOLUME_STEP = 0.05  # 音量调节步长（0-1之间）
 
-# 鼠标控制配置
-MOUSE_SENSITIVITY = 5.0  # 鼠标灵敏度（1.0-5.0，越大越灵敏）
-MOUSE_SMOOTHING = 0.3 # 鼠标平滑系数（0.0-1.0，越大越平滑）
-MOUSE_DEAD_ZONE = 0.01  # 鼠标死区（防止微小抖动）
+# 鼠标控制配置（已优化：灵敏度倍增）
+# 手指移动一小段距离，光标移动更大的距离（灵敏度倍增）
+# 灵敏度倍数在 action_executor.py 中设置（当前为3.0）
+# 手指只需移动摄像头的1/3区域，就能覆盖整个屏幕
+MOUSE_SENSITIVITY = 8.0  # 保留配置
+MOUSE_SMOOTHING = 0.2    # 保留配置  
+MOUSE_DEAD_ZONE = 0.02   # 保留配置
+
+# 浏览器模式手势冷却时间（防止连续触发）
+BROWSER_GESTURE_COOLDOWN = 0.5  # 浏览器手势冷却时间（秒）
 
 # 截图配置
 SCREENSHOT_DIR = os.path.join(os.path.expanduser("~"), "Pictures", "GestureScreenshots")
@@ -62,6 +68,17 @@ MOUSE_GESTURE_ACTIONS = {
     "FOUR": "mouse_double_click", # 4指：双击
     "FIST": "toggle_mode",       # 拳头：退出鼠标模式
     "PALM": "toggle_mode",       # 手掌：也用于退出鼠标模式（更容易做）
+}
+
+# 浏览器模式手势映射（支持常用浏览器快捷方式）
+BROWSER_GESTURE_ACTIONS = {
+    "ONE": "browser_refresh",      # 1指：刷新页面 (F5)
+    "TWO": "browser_back",         # 2指：返回上一页 (Alt+Left)
+    "THREE": "browser_forward",    # 3指：前进下一页 (Alt+Right)
+    "FOUR": "browser_reopen_tab",  # 4指：重新打开关闭的标签页 (Ctrl+Shift+T)
+    "FIST": "browser_close_tab",   # 拳头：关闭标签页 (Ctrl+W)
+    "PALM": "toggle_mode",         # 手掌：退出浏览器模式
+    "ROCK": "browser_switch_tab",  # 摇滚手势：切换标签页 (Ctrl+Tab)
 }
 
 # UI 配置

@@ -7,3 +7,5 @@ mss
 numpy
 Pillow
 comtypes
+pywin32
+psutil

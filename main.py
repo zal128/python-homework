@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config import *
 from gesture_controller import HandTracker, GestureRecognizer, ActionExecutor, FPSCounter, draw_gesture_info, draw_instructions
+from gesture_controller.utils import is_browser_active, get_browser_name
 
 def main():
     parser = argparse.ArgumentParser()
@@ -63,9 +64,37 @@ def main():
     
     print("\nStarting main loop...")
     print("(Press 'q' to quit, 'r' to reset)")
+    print("Browser auto-detection: Enabled")
+    
+    # 浏览器检测相关变量
+    last_browser_check = 0
+    browser_check_interval = 2.0  # 每2秒检查一次浏览器
+    last_known_mode = "MAIN"  # 记录上一次的非自动切换的模式
     
     try:
         while True:
+            # 定期检测浏览器活动状态
+            current_time = time.time()
+            if current_time - last_browser_check >= browser_check_interval:
+                last_browser_check = current_time
+                
+                browser_active = is_browser_active()
+                current_mode = gesture_recognizer.mode
+                
+                if browser_active and current_mode != "BROWSER":
+                    # 检测到浏览器且当前不在浏览器模式，自动切换
+                    last_known_mode = current_mode  # 保存当前模式
+                    gesture_recognizer.toggle_mode(target_mode="BROWSER")
+                    browser_name = get_browser_name()
+                    print(f"\n[Auto] Browser detected: {browser_name}")
+                    print("[Auto] Switched to BROWSER MODE")
+                    
+                elif not browser_active and current_mode == "BROWSER":
+                    # 浏览器失去焦点且当前在浏览器模式，恢复之前模式
+                    gesture_recognizer.toggle_mode(target_mode=last_known_mode)
+                    print(f"\n[Auto] Browser lost focus")
+                    print(f"[Auto] Restored {last_known_mode} MODE")
+                    last_known_mode = "MAIN"  # 重置
             success, frame = cap.read()
             if not success:
                 print("Failed to read frame from camera")
@@ -88,10 +117,12 @@ def main():
                         current_action = gesture_recognizer.get_gesture_action(current_gesture)
                         
                         if current_action:
-                            # 检测是否需要冻结鼠标（手势切换时）
-                            if gesture_recognizer.mode == "MOUSE" and is_new_gesture and current_action != "mouse_move":
-                                # 从移动切换到其他手势（点击、双击等）时，冻结鼠标0.5秒
-                                action_executor.mouse_freeze_until = time.time() + 0.5
+                            # 检测是否需要冻结鼠标（手势切换时）- 排除mouse_move和mouse_drag
+                            if (gesture_recognizer.mode == "MOUSE" and 
+                                is_new_gesture and 
+                                current_action not in ["mouse_move", "mouse_drag"]):
+                                # 切换到点击/双击等手势时冻结鼠标1秒，避免切换姿势时鼠标移动
+                                action_executor.mouse_freeze_until = time.time() + 1.0
                             
                             # 鼠标模式特殊处理
                             if gesture_recognizer.mode == "MOUSE":
