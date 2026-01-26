@@ -35,8 +35,6 @@ class ActionExecutor:
         self.action_timestamp = 0
         
         # 鼠标控制相关
-        self.mouse_last_position = None
-        self.mouse_smoothed_position = None
         self.mouse_last_action = None
         self.mouse_action_cooldown = 0.5  # 鼠标动作冷却时间
         self.mouse_sensitivity = MOUSE_SENSITIVITY
@@ -44,14 +42,6 @@ class ActionExecutor:
         self.mouse_dead_zone = MOUSE_DEAD_ZONE
         self.mouse_freeze_until = 0  # 鼠标冻结截止时间
         pyautogui.FAILSAFE = False  # 禁用故障保护
-        
-        # 摄像头区域到屏幕区域的映射（只使用中心区域，避免手出镜头）
-        self.mouse_capture_area = {
-            'x_min': int(CAMERA_WIDTH * 0.1),   # 使用10%-90%区域
-            'x_max': int(CAMERA_WIDTH * 0.9),
-            'y_min': int(CAMERA_HEIGHT * 0.1),
-            'y_max': int(CAMERA_HEIGHT * 0.9)
-        }
         
     def _init_volume_control(self):
         """
@@ -121,6 +111,18 @@ class ActionExecutor:
                 self._mouse_double_click()
             elif action_name == "mouse_drag":
                 self._mouse_drag(kwargs.get('landmarks'))
+            elif action_name == "browser_refresh":
+                self._browser_refresh()
+            elif action_name == "browser_back":
+                self._browser_back()
+            elif action_name == "browser_forward":
+                self._browser_forward()
+            elif action_name == "browser_reopen_tab":
+                self._browser_reopen_tab()
+            elif action_name == "browser_close_tab":
+                self._browser_close_tab()
+            elif action_name == "browser_switch_tab":
+                self._browser_switch_tab()
             else:
                 print(f"Unknown action: {action_name}")
                 return False
@@ -227,12 +229,21 @@ class ActionExecutor:
     
     def _mouse_move(self, landmarks):
         """
-        移动鼠标（带冻结功能，避免手势切换时跳动）
+        移动鼠标（缩放映射模式：基于中心点的灵敏度倍增）
+        
+        工作原理：
+        1. 计算手指相对于画面中心的偏移量
+        2. 放大这个偏移量（灵敏度倍增）
+        3. 将放大后的偏移量加到中心点上
+        4. 映射到屏幕
+        
+        效果：手指只需移动摄像头的1/3区域，就能覆盖整个屏幕
         
         Args:
             landmarks: 手部关键点坐标列表
         """
         if not landmarks:
+            # 没有手时停止鼠标
             return
         
         # 检查是否在冻结期（手势切换后的保护时间）
@@ -243,33 +254,43 @@ class ActionExecutor:
         index_finger_tip = landmarks[8]
         x, y = index_finger_tip[0], index_finger_tip[1]
         
-        # 限制在捕获区域内（避免手出镜头）
-        x = max(self.mouse_capture_area['x_min'], min(self.mouse_capture_area['x_max'], x))
-        y = max(self.mouse_capture_area['y_min'], min(self.mouse_capture_area['y_max'], y))
+        # 灵敏度倍增系数
+        # 1.0 = 等比例映射（手指移动1cm，光标移动1cm）
+        # 3.0 = 高灵敏度（手指移动1cm，光标移动3cm）
+        sensitivity_multiplier = 3.0
         
-        # 直接将摄像头坐标映射到屏幕（不使用相对移动）
+        # 计算相对于画面中心的偏移量
+        center_x = CAMERA_WIDTH / 2
+        center_y = CAMERA_HEIGHT / 2
+        
+        offset_x = x - center_x  # 相对于中心的x偏移
+        offset_y = y - center_y  # 相对于中心的y偏移
+        
+        # 放大偏移量（灵敏度倍增）
+        offset_x_enhanced = offset_x * sensitivity_multiplier
+        offset_y_enhanced = offset_y * sensitivity_multiplier
+        
+        # 将放大后的偏移量加回到中心点
+        x_enhanced = center_x + offset_x_enhanced
+        y_enhanced = center_y + offset_y_enhanced
+        
+        # 限制在摄像头范围内
+        x_enhanced = max(0, min(CAMERA_WIDTH, x_enhanced))
+        y_enhanced = max(0, min(CAMERA_HEIGHT, y_enhanced))
+        
+        # 将整个摄像头画面（640x480）直接映射到屏幕
         screen_width, screen_height = pyautogui.size()
         
-        # 线性映射：摄像头640x480 → 屏幕分辨率
-        target_x = (x - self.mouse_capture_area['x_min']) / (self.mouse_capture_area['x_max'] - self.mouse_capture_area['x_min']) * screen_width
-        target_y = (y - self.mouse_capture_area['y_min']) / (self.mouse_capture_area['y_max'] - self.mouse_capture_area['y_min']) * screen_height
+        # 等比例映射：放大后的摄像头坐标 → 屏幕坐标
+        target_x = x_enhanced / CAMERA_WIDTH * screen_width
+        target_y = y_enhanced / CAMERA_HEIGHT * screen_height
         
-        # 轻微平滑处理（降低平滑系数以提高响应速度）
-        if self.mouse_smoothed_position:
-            last_x, last_y = self.mouse_smoothed_position
-            # 降低平滑系数到0.3，让鼠标更紧跟手
-            smooth_factor = 0.3
-            target_x = last_x * smooth_factor + target_x * (1 - smooth_factor)
-            target_y = last_y * smooth_factor + target_y * (1 - smooth_factor)
-        
-        # 限制在屏幕边界内
+        # 限制在屏幕边界
         target_x = max(0, min(screen_width - 1, target_x))
         target_y = max(0, min(screen_height - 1, target_y))
         
-        # 移动鼠标
+        # 移动鼠标（不使用平滑，确保手停止时鼠标立即停止）
         pyautogui.moveTo(int(target_x), int(target_y), duration=0.0)
-        self.mouse_smoothed_position = (target_x, target_y)
-        self.mouse_last_position = (x, y)
     
     def _mouse_click_left(self):
         """鼠标左键单击"""
@@ -355,6 +376,36 @@ class ActionExecutor:
             self.mouse_last_action = None
             self.mouse_last_position = None
     
+    def _browser_refresh(self):
+        """刷新页面 (F5)"""
+        pyautogui.press('f5')
+        print("Browser: Refresh page")
+    
+    def _browser_back(self):
+        """返回上一页 (Alt + Left)"""
+        pyautogui.hotkey('alt', 'left')
+        print("Browser: Back")
+    
+    def _browser_forward(self):
+        """前进下一页 (Alt + Right)"""
+        pyautogui.hotkey('alt', 'right')
+        print("Browser: Forward")
+    
+    def _browser_reopen_tab(self):
+        """重新打开关闭的标签页 (Ctrl + Shift + T)"""
+        pyautogui.hotkey('ctrl', 'shift', 't')
+        print("Browser: Reopen closed tab")
+    
+    def _browser_close_tab(self):
+        """关闭标签页 (Ctrl + W)"""
+        pyautogui.hotkey('ctrl', 'w')
+        print("Browser: Close tab")
+    
+    def _browser_switch_tab(self):
+        """切换标签页 (Ctrl + Tab)"""
+        pyautogui.hotkey('ctrl', 'tab')
+        print("Browser: Switch tab")
+    
     def get_status(self):
         """
         获取执行器状态
@@ -383,5 +434,12 @@ class ActionExecutor:
             status["current_brightness"] = f"{current_brightness}%"
         except:
             status["current_brightness"] = "Unknown"
+        
+        # 鼠标冻结状态
+        if self.mouse_freeze_until > time.time():
+            freeze_remaining = self.mouse_freeze_until - time.time()
+            status["mouse_frozen"] = f"Yes ({freeze_remaining:.1f}s)"
+        else:
+            status["mouse_frozen"] = "No"
         
         return status

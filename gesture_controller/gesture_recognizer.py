@@ -11,7 +11,7 @@ from collections import deque
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import GESTURES, GESTURE_ACTIONS, MOUSE_GESTURE_ACTIONS, FINGER_STATE_THRESHOLD, GESTURE_COOLDOWN
+from config import GESTURES, GESTURE_ACTIONS, MOUSE_GESTURE_ACTIONS, BROWSER_GESTURE_ACTIONS, FINGER_STATE_THRESHOLD, GESTURE_COOLDOWN, BROWSER_GESTURE_COOLDOWN
 
 
 class GestureRecognizer:
@@ -22,11 +22,13 @@ class GestureRecognizer:
         self.gestures = GESTURES
         self.gesture_actions = GESTURE_ACTIONS
         self.mouse_gesture_actions = MOUSE_GESTURE_ACTIONS
+        self.browser_gesture_actions = BROWSER_GESTURE_ACTIONS
         self.last_gesture_time = 0
         self.cooldown = GESTURE_COOLDOWN
+        self.browser_cooldown = BROWSER_GESTURE_COOLDOWN
         
         # 模式管理
-        self.mode = "MAIN"  # MAIN: 主模式, MOUSE: 鼠标模式
+        self.mode = "MAIN"  # MAIN: 主模式, MOUSE: 鼠标模式, BROWSER: 浏览器模式
         
         # 用于平滑识别的队列
         self.gesture_history = deque(maxlen=5)
@@ -70,11 +72,22 @@ class GestureRecognizer:
                 
                 current_time = time.time()
                 
+                # 鼠标模式下的ONE和PALM手势：持续返回，不受冷却限制（用于鼠标移动和退出）
+                if self.mode == "MOUSE" and recognized_gesture in ["ONE", "PALM"]:
+                    return recognized_gesture, is_new_gesture
+                
                 # 音量/亮度调节（1-4指）可以连续触发（冷却时间0.3秒）
-                if recognized_gesture in ["ONE", "TWO", "THREE", "FOUR"]:
+                if self.mode == "MAIN" and recognized_gesture in ["ONE", "TWO", "THREE", "FOUR"]:
                     if current_time - self.last_gesture_time >= 0.3:  # 0.3秒冷却
                         self.last_gesture_time = current_time
                         return recognized_gesture, True
+                
+                # 浏览器模式手势：需要新手势才能触发（使用浏览器专用冷却时间）
+                elif self.mode == "BROWSER":
+                    if is_new_gesture or (current_time - self.last_gesture_time >= self.browser_cooldown):
+                        self.last_gesture_time = current_time
+                        return recognized_gesture, is_new_gesture
+                
                 # 其他手势（截图、切换模式）需要新手势才能触发
                 elif is_new_gesture or (current_time - self.last_gesture_time >= self.cooldown):
                     self.last_gesture_time = current_time
@@ -113,14 +126,38 @@ class GestureRecognizer:
         """
         if self.mode == "MOUSE":
             return self.mouse_gesture_actions.get(gesture_name)
+        elif self.mode == "BROWSER":
+            return self.browser_gesture_actions.get(gesture_name)
         else:
             return self.gesture_actions.get(gesture_name)
     
-    def toggle_mode(self, current_gesture_name=None):
+    def toggle_mode(self, current_gesture_name=None, target_mode=None):
         """切换模式"""
-        if self.mode == "MAIN":
+        if target_mode:
+            # 直接切换到指定模式（用于浏览器自动切换）
+            self.mode = target_mode
+        elif self.mode == "MAIN":
             self.mode = "MOUSE"
-            print("\n" + "=" * 60)
+        elif self.mode == "MOUSE":
+            self.mode = "MAIN"
+        elif self.mode == "BROWSER":
+            self.mode = "MAIN"
+        
+        # 打印模式切换信息
+        self._print_mode_info()
+        
+        # 重置手势状态，但保留历史记录以便快速识别新手势
+        # 设置当前手势为刚识别的手势，这样is_new_gesture在下次会是False
+        self.current_gesture = current_gesture_name
+        self.previous_gesture = None
+        # 设置较长的冷却时间（1秒），确保用户有时间改变手势
+        self.last_gesture_time = time.time() + 1.0
+        return self.mode
+    
+    def _print_mode_info(self):
+        """打印当前模式的信息"""
+        print("\n" + "=" * 60)
+        if self.mode == "MOUSE":
             print("Switched to MOUSE MODE")
             print("=" * 60)
             print("  ONE finger: Move mouse")
@@ -129,27 +166,27 @@ class GestureRecognizer:
             print("  FOUR fingers: Double click")
             print("  FIST/PALM: Exit mouse mode")
             print("=" * 60)
-        else:
-            self.mode = "MAIN"
-            print("\n" + "=" * 60)
+        elif self.mode == "BROWSER":
+            print("Switched to BROWSER MODE")
+            print("=" * 60)
+            print("  ONE finger: Refresh (F5)")
+            print("  TWO fingers: Back (Alt+Left)")
+            print("  THREE fingers: Forward (Alt+Right)")
+            print("  FOUR fingers: Reopen Tab (Ctrl+Shift+T)")
+            print("  FIST: Close Tab (Ctrl+W)")
+            print("  ROCK: Switch Tab (Ctrl+Tab)")
+            print("  PALM: Exit browser mode")
+            print("=" * 60)
+        else:  # MAIN mode
             print("Switched to MAIN MODE")
             print("=" * 60)
             print("  ONE: Volume Up")
             print("  TWO: Volume Down")
             print("  THREE: Brightness Up")
             print("  FOUR: Brightness Down")
-            print("  FIST: Screenshot")
+            print("  ROCK: Screenshot")
             print("  PALM: Switch to mouse mode")
             print("=" * 60)
-        
-        # 重置手势状态，避免立即再次触发
-        self.gesture_history.clear()
-        # 设置当前手势为刚识别的手势，这样is_new_gesture在下次会是False
-        self.current_gesture = current_gesture_name
-        self.previous_gesture = None
-        # 设置较长的冷却时间（2秒），确保用户有时间改变手势
-        self.last_gesture_time = time.time() + 2.0
-        return self.mode
     
     def get_gesture_info(self):
         """
@@ -167,6 +204,21 @@ class GestureRecognizer:
                 "4 fingers: Double click",
                 "",
                 "EXIT: Make Fist (0 fingers) OR Palm (5 fingers)",
+                "",
+                "Press 'q' to quit",
+                "Press 'r' to reset"
+            ]
+        elif self.mode == "BROWSER":
+            info = [
+                "BROWSER MODE:",
+                "1 finger: Refresh (F5)",
+                "2 fingers: Back (Alt+←)",
+                "3 fingers: Forward (Alt+→)",
+                "4 fingers: Reopen Tab (Ctrl+Shift+T)",
+                "Fist: Close Tab (Ctrl+W)",
+                "Rock: Switch Tab (Ctrl+Tab)",
+                "",
+                "EXIT: Open Palm (5 fingers)",
                 "",
                 "Press 'q' to quit",
                 "Press 'r' to reset"

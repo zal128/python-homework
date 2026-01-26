@@ -214,3 +214,100 @@ def draw_instructions(frame, instructions, start_position=(10, 450),
                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
         y_offset += 20
     return frame
+
+
+def is_browser_active():
+    """
+    检测当前活动窗口是否是浏览器
+    
+    Returns:
+        bool: 如果是浏览器返回True，否则返回False
+    """
+    try:
+        import win32gui
+        import win32process
+        import psutil
+        
+        # 获取当前活动窗口句柄
+        hwnd = win32gui.GetForegroundWindow()
+        if not hwnd:
+            return False
+        
+        # 获取窗口标题
+        window_title = win32gui.GetWindowText(hwnd)
+        if not window_title:
+            return False
+        
+        # 获取进程ID
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        if not pid:
+            return False
+        
+        try:
+            # 获取进程名称
+            process = psutil.Process(pid)
+            process_name = process.name().lower()
+            
+            # 检查是否是浏览器进程
+            browser_processes = [
+                'chrome.exe',      # Google Chrome
+                'firefox.exe',     # Mozilla Firefox
+                'msedge.exe',      # Microsoft Edge
+                'safari.exe',      # Safari
+                'opera.exe',       # Opera
+                'brave.exe',       # Brave
+                'vivaldi.exe'      # Vivaldi
+            ]
+            
+            return process_name in browser_processes
+            
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return False
+            
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"Browser detection error: {e}")
+        return False
+
+
+def get_browser_name():
+    """
+    获取当前浏览器的名称
+    
+    Returns:
+        str: 浏览器名称，如果不是浏览器返回None
+    """
+    try:
+        import win32gui
+        import win32process
+        import psutil
+        
+        hwnd = win32gui.GetForegroundWindow()
+        if not hwnd:
+            return None
+        
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+        if not pid:
+            return None
+        
+        try:
+            process = psutil.Process(pid)
+            process_name = process.name().lower()
+            
+            browser_names = {
+                'chrome.exe': 'Chrome',
+                'firefox.exe': 'Firefox',
+                'msedge.exe': 'Edge',
+                'safari.exe': 'Safari',
+                'opera.exe': 'Opera',
+                'brave.exe': 'Brave',
+                'vivaldi.exe': 'Vivaldi'
+            }
+            
+            return browser_names.get(process_name)
+            
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
+            
+    except Exception:
+        return None
