@@ -43,6 +43,16 @@ class ActionExecutor:
         self.mouse_freeze_until = 0  # 鼠标冻结截止时间
         pyautogui.FAILSAFE = False  # 禁用故障保护
         
+        # 浏览器滚动控制
+        self.browser_scroll_active = False  # 是否正在滚动
+        self.browser_scroll_direction = None  # 滚动方向: 'up' or 'down'
+        self.browser_scroll_speed = 3  # 滚动速度
+        self.browser_scroll_last_time = 0  # 上次滚动时间
+        
+        # 音乐控制相关
+        self.last_music_action_time = 0  # 上次音乐动作时间
+        self.music_action_cooldown = 0.3  # 音乐动作冷却时间
+        
     def _init_volume_control(self):
         """
         初始化音量控制接口（使用pycaw官方方法）
@@ -123,6 +133,22 @@ class ActionExecutor:
                 self._browser_close_tab()
             elif action_name == "browser_switch_tab":
                 self._browser_switch_tab()
+            elif action_name == "browser_scroll_up":
+                self._browser_scroll_up()
+            elif action_name == "browser_scroll_down":
+                self._browser_scroll_down()
+            elif action_name == "music_play_pause":
+                self._music_play_pause()
+            elif action_name == "music_next":
+                self._music_next()
+            elif action_name == "music_previous":
+                self._music_previous()
+            elif action_name == "music_volume_up":
+                self._music_volume_up()
+            elif action_name == "music_volume_down":
+                self._music_volume_down()
+            elif action_name == "music_like":
+                self._music_like()
             else:
                 print(f"Unknown action: {action_name}")
                 return False
@@ -405,6 +431,89 @@ class ActionExecutor:
         """切换标签页 (Ctrl + Tab)"""
         pyautogui.hotkey('ctrl', 'tab')
         print("Browser: Switch tab")
+    
+    def _browser_scroll_up(self):
+        """开始向上滚动页面（持续）"""
+        self.browser_scroll_active = True
+        self.browser_scroll_direction = 'up'
+        self.browser_scroll_last_time = time.time()
+        print("Browser: Start scrolling up (continuous)")
+    
+    def _browser_scroll_down(self):
+        """开始向下滚动页面（持续）"""
+        self.browser_scroll_active = True
+        self.browser_scroll_direction = 'down'
+        self.browser_scroll_last_time = time.time()
+        print("Browser: Start scrolling down (continuous)")
+    
+    def _stop_browser_scroll(self):
+        """停止浏览器滚动"""
+        if self.browser_scroll_active:
+            self.browser_scroll_active = False
+            self.browser_scroll_direction = None
+            print("Browser: Stop scrolling")
+    
+    def update_browser_scroll(self):
+        """更新浏览器滚动（在主循环中调用）"""
+        if not self.browser_scroll_active:
+            return
+        
+        current_time = time.time()
+        # 每0.05秒滚动一次（20次/秒），实现平滑滚动
+        if current_time - self.browser_scroll_last_time >= 0.05:
+            if self.browser_scroll_direction == 'up':
+                pyautogui.scroll(20)  # 每次滚动2个单位
+            elif self.browser_scroll_direction == 'down':
+                pyautogui.scroll(-20)  # 每次滚动-2个单位
+            self.browser_scroll_last_time = current_time
+    
+    def _music_play_pause(self):
+        """音乐播放/暂停（Alt + Ctrl + P）"""
+        pyautogui.hotkey('alt', 'ctrl', 'p')
+        print("Music: Play/Pause")
+    
+    def _music_next(self):
+        """下一首（Alt + Ctrl + Right）"""
+        pyautogui.hotkey('alt', 'ctrl', 'right')
+        print("Music: Next track")
+    
+    def _music_previous(self):
+        """上一首（Alt + Ctrl + Left）"""
+        pyautogui.hotkey('alt', 'ctrl', 'left')
+        print("Music: Previous track")
+    
+    def _music_volume_up(self):
+        """增加音乐音量"""
+        if not self.volume_interface:
+            print("Volume control not available")
+            return
+            
+        try:
+            current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
+            new_volume = min(1.0, current_volume + VOLUME_STEP * 2)  # 音乐模式音量步长加倍
+            self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
+            print(f"Music volume up: {new_volume:.0%}")
+        except Exception as e:
+            print(f"Music volume control error: {e}")
+    
+    def _music_volume_down(self):
+        """降低音乐音量"""
+        if not self.volume_interface:
+            print("Volume control not available")
+            return
+            
+        try:
+            current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
+            new_volume = max(0.0, current_volume - VOLUME_STEP * 2)  # 音乐模式音量步长加倍
+            self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
+            print(f"Music volume down: {new_volume:.0%}")
+        except Exception as e:
+            print(f"Music volume control error: {e}")
+    
+    def _music_like(self):
+        """喜欢歌曲（Ctrl + Shift + L）"""
+        pyautogui.hotkey('ctrl', 'shift', 'l')
+        print("Music: Like song")
     
     def get_status(self):
         """
