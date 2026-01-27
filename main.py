@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config import *
 from gesture_controller import HandTracker, GestureRecognizer, ActionExecutor, FPSCounter, draw_gesture_info, draw_instructions
-from gesture_controller.utils import is_browser_active, get_browser_name
+from gesture_controller.utils import is_browser_active, get_browser_name, is_music_playing, get_music_app_name
 
 def main():
     parser = argparse.ArgumentParser()
@@ -71,30 +71,63 @@ def main():
     browser_check_interval = 2.0  # 每2秒检查一次浏览器
     last_known_mode = "MAIN"  # 记录上一次的非自动切换的模式
     
+    # 音乐检测相关变量
+    last_music_check = 0
+    music_check_interval = 1.0  # 每1秒检查一次音乐播放状态
+    music_mode_override = False  # 音乐模式是否覆盖其他模式
+    
     try:
         while True:
-            # 定期检测浏览器活动状态
             current_time = time.time()
-            if current_time - last_browser_check >= browser_check_interval:
-                last_browser_check = current_time
+            
+            # 定期检测音乐播放状态（优先级最高）
+            if current_time - last_music_check >= music_check_interval:
+                last_music_check = current_time
                 
-                browser_active = is_browser_active()
+                music_playing, music_app_name = is_music_playing()
                 current_mode = gesture_recognizer.mode
                 
-                if browser_active and current_mode != "BROWSER":
-                    # 检测到浏览器且当前不在浏览器模式，自动切换
-                    last_known_mode = current_mode  # 保存当前模式
-                    gesture_recognizer.toggle_mode(target_mode="BROWSER")
-                    browser_name = get_browser_name()
-                    print(f"\n[Auto] Browser detected: {browser_name}")
-                    print("[Auto] Switched to BROWSER MODE")
+                if music_playing and current_mode != "MUSIC":
+                    # 检测到音乐播放且当前不在音乐模式，自动切换到音乐模式
+                    if not music_mode_override:  # 如果当前不是被音乐模式覆盖的状态
+                        last_known_mode = current_mode  # 保存当前模式
+                        music_mode_override = True
+                    gesture_recognizer.toggle_mode(target_mode="MUSIC")
+                    print(f"\n[Auto] Music detected: {music_app_name}")
+                    print("[Auto] Switched to MUSIC MODE (Override)")
                     
-                elif not browser_active and current_mode == "BROWSER":
-                    # 浏览器失去焦点且当前在浏览器模式，恢复之前模式
+                elif not music_playing and current_mode == "MUSIC":
+                    # 音乐停止播放且当前在音乐模式，恢复之前模式
+                    music_mode_override = False
                     gesture_recognizer.toggle_mode(target_mode=last_known_mode)
-                    print(f"\n[Auto] Browser lost focus")
+                    print(f"\n[Auto] Music stopped")
                     print(f"[Auto] Restored {last_known_mode} MODE")
                     last_known_mode = "MAIN"  # 重置
+            
+            # 只有在非音乐模式时才检测浏览器（音乐模式优先级最高）
+            if not music_mode_override:
+                # 定期检测浏览器活动状态
+                if current_time - last_browser_check >= browser_check_interval:
+                    last_browser_check = current_time
+                    
+                    browser_active = is_browser_active()
+                    current_mode = gesture_recognizer.mode
+                    
+                    if browser_active and current_mode != "BROWSER":
+                        # 检测到浏览器且当前不在浏览器模式，自动切换
+                        last_known_mode = current_mode  # 保存当前模式
+                        gesture_recognizer.toggle_mode(target_mode="BROWSER")
+                        browser_name = get_browser_name()
+                        print(f"\n[Auto] Browser detected: {browser_name}")
+                        print("[Auto] Switched to BROWSER MODE")
+                        
+                    elif not browser_active and current_mode == "BROWSER":
+                        # 浏览器失去焦点且当前在浏览器模式，停止滚动并恢复之前模式
+                        action_executor._stop_browser_scroll()
+                        gesture_recognizer.toggle_mode(target_mode=last_known_mode)
+                        print(f"\n[Auto] Browser lost focus")
+                        print(f"[Auto] Restored {last_known_mode} MODE")
+                        last_known_mode = "MAIN"  # 重置
             success, frame = cap.read()
             if not success:
                 print("Failed to read frame from camera")
@@ -106,9 +139,24 @@ def main():
             current_gesture = None
             current_action = None
             
+            # 更新浏览器滚动（在浏览器模式下持续调用）
+            if gesture_recognizer.mode == "BROWSER":
+                action_executor.update_browser_scroll()
+            else:
+                # 不在浏览器模式时停止滚动
+                action_executor._stop_browser_scroll()
+            
             if hand_landmarks_list:
                 landmarks = hand_landmarks_list[0]
                 finger_states = hand_tracker.get_finger_states(landmarks)
+                
+                # 记录手部位置用于轨迹追踪（调试用）
+                gesture_recognizer.record_hand_position(landmarks)
+                
+                # 识别动态手势（调试用，不用于控制）
+                dynamic_gesture = gesture_recognizer.recognize_dynamic_gesture(landmarks)
+                if dynamic_gesture and DEBUG_MODE:
+                    print(f"Dynamic gesture detected: {dynamic_gesture}")
                 
                 if finger_states:
                     current_gesture, is_new_gesture = gesture_recognizer.recognize_gesture(finger_states)
@@ -139,6 +187,12 @@ def main():
                                     # 如果是切换模式（在鼠标模式下也需要切换）
                                     if current_action == "toggle_mode":
                                         gesture_recognizer.toggle_mode(current_gesture)
+                            elif gesture_recognizer.mode == "BROWSER":
+                                # 浏览器模式：只在新手势时执行（除了滚动）
+                                if is_new_gesture:
+                                    # 停止之前的滚动
+                                    action_executor._stop_browser_scroll()
+                                    action_executor.execute_action(current_action)
                             elif is_new_gesture:
                                 # 主模式：只在新手势时执行
                                 action_executor.execute_action(current_action)
@@ -147,9 +201,16 @@ def main():
                                 if current_action == "toggle_mode":
                                     gesture_recognizer.toggle_mode(current_gesture)
             else:
-                # 没有检测到手，停止拖拽
+                # 没有检测到手，停止拖拽并清空轨迹
                 if gesture_recognizer.mode == "MOUSE" and action_executor.mouse_last_action == "mouse_drag":
                     action_executor.stop_drag()
+                
+                # 在浏览器模式下，没有检测到手时停止滚动
+                if gesture_recognizer.mode == "BROWSER":
+                    action_executor._stop_browser_scroll()
+                
+                # 清空手部运动轨迹
+                gesture_recognizer.clear_trajectory()
             
             fps = fps_counter.update()
             

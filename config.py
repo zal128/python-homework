@@ -34,6 +34,9 @@ MOUSE_DEAD_ZONE = 0.02   # 保留配置
 # 浏览器模式手势冷却时间（防止连续触发）
 BROWSER_GESTURE_COOLDOWN = 0.5  # 浏览器手势冷却时间（秒）
 
+# 音乐模式手势冷却时间
+MUSIC_GESTURE_COOLDOWN = 0.3  # 音乐控制手势冷却时间（秒）
+
 # 截图配置
 SCREENSHOT_DIR = os.path.join(os.path.expanduser("~"), "Pictures", "GestureScreenshots")
 SCREENSHOT_PREFIX = "gesture_screenshot_"
@@ -48,6 +51,7 @@ GESTURES = {
     "THREE": [0, 1, 1, 1, 0],     # 数字3
     "FOUR": [0, 1, 1, 1, 1],      # 数字4
     "ROCK": [0, 1, 0, 0, 1],      # 摇滚手势（食指+小指伸直）🤘 - 用于截图
+    "THUMBS_UP": [1, 0, 0, 0, 0], # 点赞手势👍 - 拇指伸直，其他弯曲（极易识别）
 }
 
 # 主模式手势映射（优化：摇滚手势=截图，与PALM差异极大）
@@ -76,9 +80,20 @@ BROWSER_GESTURE_ACTIONS = {
     "TWO": "browser_back",         # 2指：返回上一页 (Alt+Left)
     "THREE": "browser_forward",    # 3指：前进下一页 (Alt+Right)
     "FOUR": "browser_reopen_tab",  # 4指：重新打开关闭的标签页 (Ctrl+Shift+T)
-    "FIST": "browser_close_tab",   # 拳头：关闭标签页 (Ctrl+W)
-    "PALM": "toggle_mode",         # 手掌：退出浏览器模式
+    "FIST": "browser_scroll_down", # 拳头：向下滚动页面（持续）
     "ROCK": "browser_switch_tab",  # 摇滚手势：切换标签页 (Ctrl+Tab)
+    "THUMBS_UP": "browser_scroll_up", # 点赞👍：向上滚动页面（持续）
+}
+
+# 音乐模式手势映射（优先级高于其他模式，检测到音乐播放时自动激活）
+MUSIC_GESTURE_ACTIONS = {
+    "ONE": "music_play_pause",     # 1指：播放/暂停
+    "TWO": "music_next",           # 2指：下一首
+    "THREE": "music_previous",     # 3指：上一首
+    "FOUR": "music_volume_up",     # 4指：音量+
+    "FIST": "music_volume_down",   # 拳头：音量-
+    "THUMBS_UP": "music_like",     # 点赞👍：喜欢歌曲
+    "PALM": "toggle_mode",         # 手掌：切换到主模式
 }
 
 # UI 配置
