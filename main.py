@@ -3,12 +3,15 @@ import time
 import argparse
 import sys
 import os
+import queue
+import threading
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config import *
 from gesture_controller import HandTracker, GestureRecognizer, ActionExecutor, FPSCounter, draw_gesture_info, draw_instructions
 from gesture_controller.utils import is_browser_active, get_browser_name, is_music_playing, get_music_app_name
+from gesture_controller.status_window import start_status_window
 
 def main():
     parser = argparse.ArgumentParser()
@@ -34,8 +37,15 @@ def main():
         action_executor = ActionExecutor()
         fps_counter = FPSCounter()
         
-        print("✓ Components initialized successfully")
-        print(f"  Volume control: {'Available' if action_executor.volume_interface else 'Not available'}")
+        print("✓ 组件初始化成功")
+        print(f"  音量控制: {'可用' if action_executor.volume_interface else '不可用'}")
+        
+        # 启动状态悬浮窗
+        print("\n启动状态窗口...")
+        status_queue = queue.Queue()
+        status_thread = threading.Thread(target=start_status_window, args=(status_queue,), daemon=True)
+        status_thread.start()
+        print("✓ 状态窗口已启动 (右键关闭)")
         
     except Exception as e:
         print(f"✗ Failed to initialize components: {e}")
@@ -50,8 +60,8 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
     cap.set(cv2.CAP_PROP_FPS, 30)
     
-    print(f"✓ Camera opened: {args.camera}")
-    print(f"  Resolution: {args.width}x{args.height}")
+    print(f"✓ 摄像头已打开: {args.camera}")
+    print(f"  分辨率: {args.width}x{args.height}")
     
     print("\n" + "=" * 60)
     print("Control Instructions:")
@@ -62,9 +72,13 @@ def main():
             print(f"  {instruction}")
     print("=" * 60)
     
-    print("\nStarting main loop...")
-    print("(Press 'q' to quit, 'r' to reset)")
-    print("Browser auto-detection: Enabled")
+    print("\n启动主循环...")
+    print("(按 'q' 退出, 'r' 重置)")
+    print("浏览器自动检测: 已启用")
+    print("状态窗口: 右键关闭, 拖动移动")
+    
+    # 初始化状态更新相关变量
+    main.last_status_update = 0
     
     # 浏览器检测相关变量
     last_browser_check = 0
@@ -79,6 +93,8 @@ def main():
     try:
         while True:
             current_time = time.time()
+            music_playing = False
+            music_app_name = None
             
             # 定期检测音乐播放状态（优先级最高）
             if current_time - last_music_check >= music_check_interval:
@@ -93,15 +109,15 @@ def main():
                         last_known_mode = current_mode  # 保存当前模式
                         music_mode_override = True
                     gesture_recognizer.toggle_mode(target_mode="MUSIC")
-                    print(f"\n[Auto] Music detected: {music_app_name}")
-                    print("[Auto] Switched to MUSIC MODE (Override)")
+                    print(f"\n[自动] 检测到音乐: {music_app_name}")
+                    print("[自动] 切换到 音乐模式 (覆盖)")
                     
                 elif not music_playing and current_mode == "MUSIC":
                     # 音乐停止播放且当前在音乐模式，恢复之前模式
                     music_mode_override = False
                     gesture_recognizer.toggle_mode(target_mode=last_known_mode)
-                    print(f"\n[Auto] Music stopped")
-                    print(f"[Auto] Restored {last_known_mode} MODE")
+                    print(f"\n[自动] 音乐已停止")
+                    print(f"[自动] 恢复到 {last_known_mode} 模式")
                     last_known_mode = "MAIN"  # 重置
             
             # 只有在非音乐模式时才检测浏览器（音乐模式优先级最高）
@@ -118,15 +134,15 @@ def main():
                         last_known_mode = current_mode  # 保存当前模式
                         gesture_recognizer.toggle_mode(target_mode="BROWSER")
                         browser_name = get_browser_name()
-                        print(f"\n[Auto] Browser detected: {browser_name}")
-                        print("[Auto] Switched to BROWSER MODE")
+                        print(f"\n[自动] 检测到浏览器: {browser_name}")
+                        print("[自动] 切换到 浏览器模式")
                         
                     elif not browser_active and current_mode == "BROWSER":
                         # 浏览器失去焦点且当前在浏览器模式，停止滚动并恢复之前模式
                         action_executor._stop_browser_scroll()
                         gesture_recognizer.toggle_mode(target_mode=last_known_mode)
-                        print(f"\n[Auto] Browser lost focus")
-                        print(f"[Auto] Restored {last_known_mode} MODE")
+                        print(f"\n[自动] 浏览器失去焦点")
+                        print(f"[自动] 恢复到 {last_known_mode} 模式")
                         last_known_mode = "MAIN"  # 重置
             success, frame = cap.read()
             if not success:
@@ -214,6 +230,28 @@ def main():
             
             fps = fps_counter.update()
             
+            # 更新悬浮窗状态（每0.5秒更新一次）
+            if current_time - getattr(main, 'last_status_update', 0) >= 0.5:
+                main.last_status_update = current_time
+                
+                # 获取当前状态
+                status = action_executor.get_status()
+                
+                # 构建状态信息
+                status_info = {
+                    'mode': gesture_recognizer.mode,
+                    'gesture': current_gesture if current_gesture else '-',
+                    'volume': status.get('current_volume', '-'),
+                    'brightness': status.get('current_brightness', '-'),
+                    'music_app': music_app_name if music_playing else None
+                }
+                
+                # 发送到悬浮窗（非阻塞）
+                try:
+                    status_queue.put_nowait(status_info)
+                except queue.Full:
+                    pass  # 如果队列满了，跳过这次更新
+            
             if not args.no_viz:
                 fps_counter.draw(annotated_frame, position=(10, 30))
                 
@@ -222,7 +260,7 @@ def main():
                         annotated_frame, 
                         current_gesture, 
                         current_action,
-                        position=(10, 60),
+                        position=(10, 50),  # 向上调整10像素
                         font_scale=FONT_SCALE,
                         color=FONT_COLOR,
                         thickness=FONT_THICKNESS
@@ -232,7 +270,7 @@ def main():
                 draw_instructions(
                     annotated_frame,
                     instructions,
-                    start_position=(10, 450),
+                    start_position=(10, 440),  # 向上调整10像素
                     font_scale=0.6,
                     color=(200, 200, 200),
                     thickness=1
@@ -256,13 +294,13 @@ def main():
             key = cv2.waitKey(1) & 0xFF
             
             if key == ord('q'):
-                print("Quit requested by user")
+                print("用户请求退出")
                 break
             elif key == ord('r'):
-                print("Resetting recognizer...")
+                print("重置识别器...")
                 gesture_recognizer.reset()
             elif key == ord('s'):
-                print("Manual screenshot...")
+                print("手动截图...")
                 action_executor.execute_action("screenshot")
     
     except KeyboardInterrupt:
@@ -275,27 +313,27 @@ def main():
             traceback.print_exc()
     
     finally:
-        print("\nCleaning up...")
+        print("\n清理资源...")
         
         if 'cap' in locals():
             cap.release()
-            print("✓ Camera released")
+            print("✓ 摄像头已释放")
         
         if 'hand_tracker' in locals():
             hand_tracker.release()
-            print("✓ Hand tracker released")
+            print("✓ 手部追踪器已释放")
         
         cv2.destroyAllWindows()
-        print("✓ Windows closed")
+        print("✓ 窗口已关闭")
         
         if 'action_executor' in locals():
-            print("\nFinal Status:")
+            print("\n最终状态:")
             print("-" * 30)
             status = action_executor.get_status()
             for key, value in status.items():
                 print(f"  {key}: {value}")
         
-        print("\nProgram terminated successfully")
+        print("\n程序已成功终止")
 
 
 if __name__ == "__main__":
