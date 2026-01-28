@@ -170,47 +170,47 @@ class GestureRecognizer:
         """打印当前模式的信息"""
         print("\n" + "=" * 60)
         if self.mode == "MOUSE":
-            print("Switched to MOUSE MODE")
+            print("切换到 鼠标模式")
             print("=" * 60)
-            print("  ONE finger: Move mouse")
-            print("  TWO fingers: Left click")
-            print("  THREE fingers: Right click")
-            print("  FOUR fingers: Double click")
-            print("  FIST/PALM: Exit mouse mode")
+            print("  1指: 移动鼠标")
+            print("  2指: 左键点击")
+            print("  3指: 右键点击")
+            print("  4指: 双击")
+            print("  拳头/手掌: 退出鼠标模式")
             print("=" * 60)
         elif self.mode == "BROWSER":
-            print("Switched to BROWSER MODE (Auto)")
+            print("切换到 浏览器模式 (自动)")
             print("=" * 60)
-            print("  ONE finger: Refresh (F5)")
-            print("  TWO fingers: Back (Alt+Left)")
-            print("  THREE fingers: Forward (Alt+Right)")
-            print("  FOUR fingers: Reopen Tab (Ctrl+Shift+T)")
-            print("  ROCK: Switch Tab (Ctrl+Tab)")
-            print("  Thumbs Up👍: Scroll Up (Hold for continuous)")
-            print("  Fist✊: Scroll Down (Hold for continuous)")
-            print("  Auto-exit when browser loses focus")
+            print("  1指: 刷新页面 (F5)")
+            print("  2指: 后退 (Alt+←)")
+            print("  3指: 前进 (Alt+→)")
+            print("  4指: 恢复标签 (Ctrl+Shift+T)")
+            print("  🤘 摇滚手势: 切换标签 (Ctrl+Tab)")
+            print("  👍 点赞: 向上滚动 (按住连续)")
+            print("  ✊ 拳头: 向下滚动 (按住连续)")
+            print("  浏览器失去焦点时自动退出")
             print("=" * 60)
         elif self.mode == "MUSIC":
-            print("Switched to MUSIC MODE (Auto)")
+            print("切换到 音乐模式 (自动)")
             print("=" * 60)
-            print("  ONE finger: Play/Pause (Alt+Ctrl+P)")
-            print("  TWO fingers: Next track (Alt+Ctrl+Right)")
-            print("  THREE fingers: Previous track (Alt+Ctrl+Left)")
-            print("  FOUR fingers: Volume Up")
-            print("  Fist: Volume Down")
-            print("  Thumbs Up👍: Like song (Ctrl+Shift+L)")
-            print("  PALM: Exit to main mode")
-            print("  Auto-activate when music is playing")
+            print("  1指: 播放/暂停 (Alt+Ctrl+P)")
+            print("  2指: 下一首 (Alt+Ctrl+→)")
+            print("  3指: 上一首 (Alt+Ctrl+←)")
+            print("  4指: 音量+")
+            print("  ✊ 拳头: 音量-")
+            print("  👍 点赞: 喜欢歌曲 (Ctrl+Shift+L)")
+            print("  ✋ 手掌: 退出到主模式")
+            print("  检测到音乐播放时自动激活")
             print("=" * 60)
         else:  # MAIN mode
-            print("Switched to MAIN MODE")
+            print("切换到 主模式")
             print("=" * 60)
-            print("  ONE: Volume Up")
-            print("  TWO: Volume Down")
-            print("  THREE: Brightness Up")
-            print("  FOUR: Brightness Down")
-            print("  ROCK: Screenshot")
-            print("  PALM: Switch to mouse mode")
+            print("  1指: 音量+")
+            print("  2指: 音量-")
+            print("  3指: 亮度+")
+            print("  4指: 亮度-")
+            print("  🤘 摇滚手势: 截图")
+            print("  ✋ 手掌: 切换到鼠标模式")
             print("=" * 60)
     
     def get_gesture_info(self):
@@ -222,62 +222,62 @@ class GestureRecognizer:
         """
         if self.mode == "MOUSE":
             info = [
-                "MOUSE MODE:",
-                "1 finger: Move cursor",
-                "2 fingers: Left click",
-                "3 fingers: Right click",
-                "4 fingers: Double click",
+                "鼠标模式:",
+                "1指: 移动光标",
+                "2指: 左键点击",
+                "3指: 右键点击",
+                "4指: 双击",
                 "",
-                "EXIT: Make Fist (0 fingers) OR Palm (5 fingers)",
+                "退出: 拳头(0指) 或 手掌(5指)",
                 "",
-                "Press 'q' to quit",
-                "Press 'r' to reset"
+                "按 'q' 退出",
+                "按 'r' 重置"
             ]
         elif self.mode == "BROWSER":
             info = [
-                "BROWSER MODE (Auto):",
-                "1 finger: Refresh (F5)",
-                "2 fingers: Back (Alt+←)",
-                "3 fingers: Forward (Alt+→)",
-                "4 fingers: Reopen Tab (Ctrl+Shift+T)",
-                "Rock: Switch Tab (Ctrl+Tab)",
-                "Thumbs Up👍: Scroll Up (Hold)",
-                "Fist✊: Scroll Down (Hold)",
+                "浏览器模式 (自动):",
+                "1指: 刷新页面 (F5)",
+                "2指: 后退 (Alt+←)",
+                "3指: 前进 (Alt+→)",
+                "4指: 恢复标签 (Ctrl+Shift+T)",
+                "🤘 摇滚: 切换标签 (Ctrl+Tab)",
+                "👍 点赞: 向上滚动 (按住)",
+                "✊ 拳头: 向下滚动 (按住)",
                 "",
-                "Auto-exit when browser loses focus",
+                "浏览器失去焦点时自动退出",
                 "",
-                "Press 'q' to quit",
-                "Press 'r' to reset"
+                "按 'q' 退出",
+                "按 'r' 重置"
             ]
         elif self.mode == "MUSIC":
             info = [
-                "MUSIC MODE (Auto):",
-                "1 finger: Play/Pause",
-                "2 fingers: Next track",
-                "3 fingers: Previous track",
-                "4 fingers: Volume Up",
-                "Fist: Volume Down",
-                "Thumbs Up👍: Like song",
-                "Palm: Exit to main mode",
+                "音乐模式 (自动):",
+                "1指: 播放/暂停",
+                "2指: 下一首",
+                "3指: 上一首",
+                "4指: 音量+",
+                "✊ 拳头: 音量-",
+                "👍 点赞: 喜欢歌曲",
+                "✋ 手掌: 退出到主模式",
                 "",
-                "Auto-activate when music plays",
+                "检测到音乐播放时自动激活",
                 "",
-                "Press 'q' to quit",
-                "Press 'r' to reset"
+                "按 'q' 退出",
+                "按 'r' 重置"
             ]
         else:
             info = [
-                "MAIN MODE:",
-                "1 finger: Volume Up",
-                "2 fingers: Volume Down",
-                "3 fingers: Brightness Up",
-                "4 fingers: Brightness Down",
-                "Fist (0 fingers): Screenshot",
+                "主模式:",
+                "1指: 音量+",
+                "2指: 音量-",
+                "3指: 亮度+",
+                "4指: 亮度-",
+                "✊ 拳头(0指): 截图",
                 "",
-                "MOUSE MODE: Open Palm (5 fingers)",
+                "鼠标模式: 手掌(5指)",
                 "",
-                "Press 'q' to quit",
-                "Press 'r' to reset"
+                "按 'q' 退出",
+                "按 'r' 重置"
             ]
         return info
     

@@ -171,7 +171,7 @@ def get_timestamp_filename(prefix="screenshot", extension="png"):
 def draw_gesture_info(frame, gesture_name, action_name, position=(10, 60), 
                      font_scale=0.7, color=(0, 255, 0), thickness=2):
     """
-    在帧上绘制手势信息
+    在帧上绘制手势信息（支持中文）
     
     Args:
         frame: 图像帧
@@ -183,16 +183,97 @@ def draw_gesture_info(frame, gesture_name, action_name, position=(10, 60),
         thickness: 线条粗细
     """
     if gesture_name and action_name:
-        info_text = f"Gesture: {gesture_name} | Action: {action_name}"
-        cv2.putText(frame, info_text, position,
-                   cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+        # 手势名称中文映射
+        gesture_map = {
+            'ONE': '1指',
+            'TWO': '2指',
+            'THREE': '3指',
+            'FOUR': '4指',
+            'FIST': '拳头',
+            'PALM': '手掌',
+            'ROCK': '🤘 摇滚',
+            'THUMBS_UP': '👍 点赞'
+        }
+        
+        # 动作名称中文映射
+        action_map = {
+            'volume_up': '音量+',
+            'volume_down': '音量-',
+            'brightness_up': '亮度+',
+            'brightness_down': '亮度-',
+            'screenshot': '截图',
+            'toggle_mode': '切换模式',
+            'mouse_move': '鼠标移动',
+            'mouse_click_left': '左键点击',
+            'mouse_click_right': '右键点击',
+            'mouse_double_click': '双击',
+            'browser_refresh': '刷新页面',
+            'browser_back': '后退',
+            'browser_forward': '前进',
+            'browser_reopen_tab': '恢复标签',
+            'browser_switch_tab': '切换标签',
+            'browser_scroll_up': '向上滚动',
+            'browser_scroll_down': '向下滚动',
+            'music_play_pause': '播放/暂停',
+            'music_next': '下一首',
+            'music_previous': '上一首',
+            'music_volume_up': '音量+',
+            'music_volume_down': '音量-',
+            'music_like': '喜欢歌曲'
+        }
+        
+        display_gesture = gesture_map.get(gesture_name, gesture_name)
+        display_action = action_map.get(action_name, action_name)
+        
+        info_text = f"手势: {display_gesture} | 动作: {display_action}"
+        
+        # 使用Pillow绘制中文文字
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            
+            # 将OpenCV图像转换为PIL图像
+            pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            draw = ImageDraw.Draw(pil_image)
+            
+            # 尝试使用系统自带的中文字体
+            font_path = None
+            # Windows系统常见中文字体
+            windows_fonts = [
+                "C:/Windows/Fonts/simhei.ttf",  # 黑体
+                "C:/Windows/Fonts/simsun.ttc",  # 宋体
+                "C:/Windows/Fonts/msyh.ttc",    # 微软雅黑
+                "C:/Windows/Fonts/msyhbd.ttc"   # 微软雅黑粗体
+            ]
+            
+            for font in windows_fonts:
+                if os.path.exists(font):
+                    font_path = font
+                    break
+            
+            # 如果找不到中文字体，使用默认字体
+            if font_path:
+                font = ImageFont.truetype(font_path, int(font_scale * 20))
+            else:
+                font = ImageFont.load_default()
+            
+            # 绘制文字
+            draw.text(position, info_text, font=font, fill=color[::-1])  # RGB to BGR
+            
+            # 转换回OpenCV图像
+            frame[:] = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+            
+        except Exception as e:
+            # 如果Pillow失败，回退到OpenCV默认字体（可能显示问号）
+            cv2.putText(frame, info_text, position,
+                       cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+    
     return frame
 
 
 def draw_instructions(frame, instructions, start_position=(10, 450), 
                      font_scale=None, color=None, thickness=None):
     """
-    在帧上绘制操作说明
+    在帧上绘制操作说明（支持中文）
     
     Args:
         frame: 图像帧
@@ -200,29 +281,67 @@ def draw_instructions(frame, instructions, start_position=(10, 450),
         start_position: 起始位置
         font_scale: 字体大小
         color: 颜色
-        thickness: 线条粗细
+        thickness: 线条粗细（此参数在中文模式下无效）
     """
+    if not instructions:
+        return frame
+    
     font_scale = font_scale or (FONT_SCALE - 0.1)
     color = color or FONT_COLOR
-    thickness = thickness or (FONT_THICKNESS - 1)
-    """
-    在帧上绘制操作说明
     
-    Args:
-        frame: 图像帧
-        instructions: 说明文本列表
-        start_position: 起始位置
-        font_scale: 字体大小
-        color: 颜色
-        thickness: 线条粗细
-    """
-    y_offset = 0
-    for i, instruction in enumerate(instructions):
-        y = start_position[1] + y_offset
-        cv2.putText(frame, instruction, 
-                   (start_position[0], y),
-                   cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
-        y_offset += 20
+    # 使用Pillow绘制中文文字
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+        
+        # 将OpenCV图像转换为PIL图像
+        pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(pil_image)
+        
+        # 尝试使用系统自带的中文字体
+        font_path = None
+        # Windows系统常见中文字体
+        windows_fonts = [
+            "C:/Windows/Fonts/simhei.ttf",  # 黑体
+            "C:/Windows/Fonts/simsun.ttc",  # 宋体
+            "C:/Windows/Fonts/msyh.ttc",    # 微软雅黑
+            "C:/Windows/Fonts/msyhbd.ttc"   # 微软雅黑粗体
+        ]
+        
+        for font in windows_fonts:
+            if os.path.exists(font):
+                font_path = font
+                break
+        
+        # 如果找不到中文字体，使用默认字体
+        if font_path:
+            font = ImageFont.truetype(font_path, int(font_scale * 18))
+        else:
+            font = ImageFont.load_default()
+        
+        # 绘制文字
+        y_offset = 0
+        line_height = int(font_scale * 25)  # 行高
+        
+        for i, instruction in enumerate(instructions):
+            if instruction:  # 跳过空行
+                y = start_position[1] + y_offset
+                draw.text((start_position[0], y), instruction, font=font, fill=color[::-1])
+                y_offset += line_height
+        
+        # 转换回OpenCV图像
+        frame[:] = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        
+    except Exception as e:
+        # 如果Pillow失败，回退到OpenCV默认字体
+        y_offset = 0
+        for i, instruction in enumerate(instructions):
+            y = start_position[1] + y_offset
+            cv2.putText(frame, instruction, 
+                       (start_position[0], y),
+                       cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 1)
+            y_offset += 20
+    
     return frame
 
 

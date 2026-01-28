@@ -164,7 +164,7 @@ class ActionExecutor:
     def _volume_up(self):
         """增加音量"""
         if not self.volume_interface:
-            print("Volume control not available")
+            print("音量控制不可用")
             return
             
         try:
@@ -172,14 +172,14 @@ class ActionExecutor:
             current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
             new_volume = min(1.0, current_volume + VOLUME_STEP)
             self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
-            print(f"Volume up: {new_volume:.0%}")
+            print(f"音量+: {new_volume:.0%}")
         except Exception as e:
-            print(f"Volume control error: {e}")
+            print(f"音量控制错误: {e}")
     
     def _volume_down(self):
         """降低音量"""
         if not self.volume_interface:
-            print("Volume control not available")
+            print("音量控制不可用")
             return
             
         try:
@@ -187,9 +187,9 @@ class ActionExecutor:
             current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
             new_volume = max(0.0, current_volume - VOLUME_STEP)
             self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
-            print(f"Volume down: {new_volume:.0%}")
+            print(f"音量-: {new_volume:.0%}")
         except Exception as e:
-            print(f"Volume control error: {e}")
+            print(f"音量控制错误: {e}")
     
     def _brightness_up(self):
         """增加亮度"""
@@ -197,9 +197,9 @@ class ActionExecutor:
             current_brightness = sbc.get_brightness()[0]
             new_brightness = min(100, current_brightness + BRIGHTNESS_STEP)
             sbc.set_brightness(new_brightness)
-            print(f"Brightness up: {new_brightness}%")
+            print(f"亮度+: {new_brightness}%")
         except Exception as e:
-            print(f"Failed to adjust brightness: {e}")
+            print(f"亮度调节失败: {e}")
     
     def _brightness_down(self):
         """降低亮度"""
@@ -207,9 +207,9 @@ class ActionExecutor:
             current_brightness = sbc.get_brightness()[0]
             new_brightness = max(0, current_brightness - BRIGHTNESS_STEP)
             sbc.set_brightness(new_brightness)
-            print(f"Brightness down: {new_brightness}%")
+            print(f"亮度-: {new_brightness}%")
         except Exception as e:
-            print(f"Failed to adjust brightness: {e}")
+            print(f"亮度调节失败: {e}")
     
     def _take_screenshot(self):
         """截图"""
@@ -230,22 +230,22 @@ class ActionExecutor:
                     
                     # 保存图片
                     img.save(filepath, "PNG")
-                    print(f"Screenshot saved: {filepath}")
+                    print(f"截图已保存: {filepath}")
                     
                     # 可选：复制到剪贴板
                     # img.show()  # 临时显示
                     
             except Exception as e:
-                print(f"Screenshot failed: {e}")
+                print(f"截图失败: {e}")
                 # 备用方案：使用pyautogui
                 try:
                     screenshot = pyautogui.screenshot()
                     filename = f"{SCREENSHOT_PREFIX}_backup_{int(time.time())}.png"
                     filepath = os.path.join(SCREENSHOT_DIR, filename)
                     screenshot.save(filepath)
-                    print(f"Screenshot saved (backup): {filepath}")
+                    print(f"截图已保存(备用): {filepath}")
                 except Exception as e2:
-                    print(f"Backup screenshot also failed: {e2}")
+                    print(f"备用截图也失败了: {e2}")
     
     def _toggle_mode(self):
         """切换模式 - 实际切换由GestureRecognizer处理"""
@@ -321,17 +321,17 @@ class ActionExecutor:
     def _mouse_click_left(self):
         """鼠标左键单击"""
         pyautogui.click()
-        print("Left click")
+        print("左键点击")
     
     def _mouse_click_right(self):
         """鼠标右键单击"""
         pyautogui.rightClick()
-        print("Right click")
+        print("右键点击")
     
     def _mouse_double_click(self):
         """鼠标双击"""
         pyautogui.doubleClick()
-        print("Double click")
+        print("双击")
     
     def _mouse_drag(self, landmarks):
         """
@@ -386,7 +386,7 @@ class ActionExecutor:
         # 如果还没有拖拽，开始拖拽
         if self.mouse_last_action != "mouse_drag":
             pyautogui.mouseDown()
-            print("Drag start")
+            print("开始拖拽")
         
         # 移动鼠标（拖拽中）
         pyautogui.moveTo(int(target_x), int(target_y), duration=0.0)
@@ -398,60 +398,60 @@ class ActionExecutor:
         """停止拖拽"""
         if self.mouse_last_action == "mouse_drag":
             pyautogui.mouseUp()
-            print("Drag end")
+            print("结束拖拽")
             self.mouse_last_action = None
             self.mouse_last_position = None
     
     def _browser_refresh(self):
         """刷新页面 (F5)"""
         pyautogui.press('f5')
-        print("Browser: Refresh page")
+        print("浏览器: 刷新页面")
     
     def _browser_back(self):
         """返回上一页 (Alt + Left)"""
         pyautogui.hotkey('alt', 'left')
-        print("Browser: Back")
+        print("浏览器: 后退")
     
     def _browser_forward(self):
         """前进下一页 (Alt + Right)"""
         pyautogui.hotkey('alt', 'right')
-        print("Browser: Forward")
+        print("浏览器: 前进")
     
     def _browser_reopen_tab(self):
         """重新打开关闭的标签页 (Ctrl + Shift + T)"""
         pyautogui.hotkey('ctrl', 'shift', 't')
-        print("Browser: Reopen closed tab")
+        print("浏览器: 恢复标签")
     
     def _browser_close_tab(self):
         """关闭标签页 (Ctrl + W)"""
         pyautogui.hotkey('ctrl', 'w')
-        print("Browser: Close tab")
+        print("浏览器: 关闭标签")
     
     def _browser_switch_tab(self):
         """切换标签页 (Ctrl + Tab)"""
         pyautogui.hotkey('ctrl', 'tab')
-        print("Browser: Switch tab")
+        print("浏览器: 切换标签")
     
     def _browser_scroll_up(self):
         """开始向上滚动页面（持续）"""
         self.browser_scroll_active = True
         self.browser_scroll_direction = 'up'
         self.browser_scroll_last_time = time.time()
-        print("Browser: Start scrolling up (continuous)")
+        print("浏览器: 开始向上滚动 (连续)")
     
     def _browser_scroll_down(self):
         """开始向下滚动页面（持续）"""
         self.browser_scroll_active = True
         self.browser_scroll_direction = 'down'
         self.browser_scroll_last_time = time.time()
-        print("Browser: Start scrolling down (continuous)")
+        print("浏览器: 开始向下滚动 (连续)")
     
     def _stop_browser_scroll(self):
         """停止浏览器滚动"""
         if self.browser_scroll_active:
             self.browser_scroll_active = False
             self.browser_scroll_direction = None
-            print("Browser: Stop scrolling")
+            print("浏览器: 停止滚动")
     
     def update_browser_scroll(self):
         """更新浏览器滚动（在主循环中调用）"""
@@ -470,50 +470,50 @@ class ActionExecutor:
     def _music_play_pause(self):
         """音乐播放/暂停（Alt + Ctrl + P）"""
         pyautogui.hotkey('alt', 'ctrl', 'p')
-        print("Music: Play/Pause")
+        print("音乐: 播放/暂停")
     
     def _music_next(self):
         """下一首（Alt + Ctrl + Right）"""
         pyautogui.hotkey('alt', 'ctrl', 'right')
-        print("Music: Next track")
+        print("音乐: 下一首")
     
     def _music_previous(self):
         """上一首（Alt + Ctrl + Left）"""
         pyautogui.hotkey('alt', 'ctrl', 'left')
-        print("Music: Previous track")
+        print("音乐: 上一首")
     
     def _music_volume_up(self):
         """增加音乐音量"""
         if not self.volume_interface:
-            print("Volume control not available")
+            print("音量控制不可用")
             return
             
         try:
             current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
             new_volume = min(1.0, current_volume + VOLUME_STEP * 2)  # 音乐模式音量步长加倍
             self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
-            print(f"Music volume up: {new_volume:.0%}")
+            print(f"音乐音量+: {new_volume:.0%}")
         except Exception as e:
-            print(f"Music volume control error: {e}")
+            print(f"音乐音量控制错误: {e}")
     
     def _music_volume_down(self):
         """降低音乐音量"""
         if not self.volume_interface:
-            print("Volume control not available")
+            print("音量控制不可用")
             return
             
         try:
             current_volume = self.volume_interface.GetMasterVolumeLevelScalar()
             new_volume = max(0.0, current_volume - VOLUME_STEP * 2)  # 音乐模式音量步长加倍
             self.volume_interface.SetMasterVolumeLevelScalar(new_volume, None)
-            print(f"Music volume down: {new_volume:.0%}")
+            print(f"音乐音量-: {new_volume:.0%}")
         except Exception as e:
-            print(f"Music volume control error: {e}")
+            print(f"音乐音量控制错误: {e}")
     
     def _music_like(self):
         """喜欢歌曲（Ctrl + Shift + L）"""
         pyautogui.hotkey('ctrl', 'shift', 'l')
-        print("Music: Like song")
+        print("音乐: 喜欢歌曲")
     
     def get_status(self):
         """
