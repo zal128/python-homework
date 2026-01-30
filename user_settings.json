@@ -1,0 +1,28 @@
+{
+  "camera_index": 0,
+  "camera_width": 2048,
+  "camera_height": 1536,
+  "mouse_sensitivity": 8.0,
+  "volume_step": 0.1,
+  "brightness_step": 10,
+  "gesture_cooldown": 0.5,
+  "ui_theme": "dark",
+  "sound_feedback": true,
+  "visual_feedback": true,
+  "auto_mode_switch": true,
+  "debug_mode": false,
+  "gesture_threshold": 0.015,
+  "scroll_speed": 5,
+  "ui_primary_color": [
+    150,
+    0,
+    255
+  ],
+  "ui_background_color": [
+    20,
+    20,
+    30
+  ],
+  "ui_alpha": 0.9447368421052631,
+  "font_size": 0.7
+}

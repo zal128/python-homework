@@ -19,6 +19,7 @@ MAX_NUM_HANDS = 1  # 只检测一只手
 FINGER_STATE_THRESHOLD = 0.015  # 手指状态判断阈值（降低提高准确度）
 GESTURE_COOLDOWN = 0.5  # 手势识别冷却时间（缩短到0.5秒，提高响应）
 
+
 # 动作执行配置
 BRIGHTNESS_STEP = 10  # 亮度调节步长
 VOLUME_STEP = 0.05  # 音量调节步长（0-1之间）
@@ -95,12 +96,6 @@ MUSIC_GESTURE_ACTIONS = {
     "THUMBS_UP": "music_like",     # 点赞👍：喜欢歌曲
     "PALM": "toggle_mode",         # 手掌：切换到主模式
 }
-
-# UI 配置
-FONT_NAME = "FONT_HERSHEY_SIMPLEX"  # OpenCV字体名称
-FONT_SCALE = 0.7
-FONT_COLOR = (255, 255, 255)
-FONT_THICKNESS = 2
 
 # 调试模式
 DEBUG_MODE = True

@@ -5,13 +5,41 @@ import sys
 import os
 import queue
 import threading
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config import *
-from gesture_controller import HandTracker, GestureRecognizer, ActionExecutor, FPSCounter, draw_gesture_info, draw_instructions
+from gesture_controller import HandTracker, GestureRecognizer, ActionExecutor, FPSCounter
 from gesture_controller.utils import is_browser_active, get_browser_name, is_music_playing, get_music_app_name
 from gesture_controller.status_window import start_status_window
+
+def load_user_settings():
+    """加载用户设置"""
+    settings_file = "user_settings.json"
+    default_settings = {
+        "mouse_sensitivity": 8.0,
+        "volume_step": 0.05,
+        "brightness_step": 10,
+        "gesture_cooldown": 0.5,
+        "scroll_speed": 5,
+        "ui_primary_color": (0, 150, 255),
+        "ui_background_color": (30, 30, 40)
+    }
+    
+    try:
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r', encoding='utf-8') as f:
+                user_settings = json.load(f)
+                # 合并设置，保留用户自定义的，使用默认值补充缺失的
+                for key, value in default_settings.items():
+                    if key not in user_settings:
+                        user_settings[key] = value
+                return user_settings
+    except Exception as e:
+        print(f"加载用户设置失败: {e}")
+    
+    return default_settings
 
 def main():
     parser = argparse.ArgumentParser()
@@ -21,10 +49,17 @@ def main():
     parser.add_argument("--no-viz", action="store_true")
     args = parser.parse_args()
     
+    # 加载用户设置
+    user_settings = load_user_settings()
+    
     print("=" * 60)
-    print("Gesture Control System")
+    print("手势控制系统")
     print("=" * 60)
-    print("Initializing components...")
+    print("初始化组件...")
+    print(f"  鼠标灵敏度: {user_settings['mouse_sensitivity']}")
+    print(f"  音量调节步长: {user_settings['volume_step']}")
+    print(f"  亮度调节步长: {user_settings['brightness_step']}")
+    print(f"  手势冷却时间: {user_settings['gesture_cooldown']}秒")
     
     try:
         hand_tracker = HandTracker(
@@ -36,6 +71,13 @@ def main():
         gesture_recognizer = GestureRecognizer()
         action_executor = ActionExecutor()
         fps_counter = FPSCounter()
+        
+        # 应用用户设置
+        action_executor.set_mouse_sensitivity(user_settings['mouse_sensitivity'])
+        action_executor.set_volume_step(user_settings['volume_step'])
+        action_executor.set_brightness_step(user_settings['brightness_step'])
+        action_executor.set_scroll_speed(user_settings['scroll_speed'])
+        gesture_recognizer.set_cooldown(user_settings['gesture_cooldown'])
         
         print("✓ 组件初始化成功")
         print(f"  音量控制: {'可用' if action_executor.volume_interface else '不可用'}")
@@ -112,13 +154,13 @@ def main():
                     print(f"\n[自动] 检测到音乐: {music_app_name}")
                     print("[自动] 切换到 音乐模式 (覆盖)")
                     
-                elif not music_playing and current_mode == "MUSIC":
-                    # 音乐停止播放且当前在音乐模式，恢复之前模式
-                    music_mode_override = False
-                    gesture_recognizer.toggle_mode(target_mode=last_known_mode)
-                    print(f"\n[自动] 音乐已停止")
-                    print(f"[自动] 恢复到 {last_known_mode} 模式")
-                    last_known_mode = "MAIN"  # 重置
+            elif not music_playing and current_mode == "MUSIC":
+                # 音乐停止播放且当前在音乐模式，恢复之前模式
+                music_mode_override = False
+                gesture_recognizer.toggle_mode(target_mode=last_known_mode)
+                print(f"\n[自动] 音乐已停止")
+                print(f"[自动] 恢复到 {last_known_mode} 模式")
+                last_known_mode = "MAIN"  # 重置
             
             # 只有在非音乐模式时才检测浏览器（音乐模式优先级最高）
             if not music_mode_override:
@@ -228,7 +270,7 @@ def main():
                 # 清空手部运动轨迹
                 gesture_recognizer.clear_trajectory()
             
-            fps = fps_counter.update()
+            fps_counter.update()
             
             # 更新悬浮窗状态（每0.5秒更新一次）
             if current_time - getattr(main, 'last_status_update', 0) >= 0.5:
@@ -253,42 +295,7 @@ def main():
                     pass  # 如果队列满了，跳过这次更新
             
             if not args.no_viz:
-                fps_counter.draw(annotated_frame, position=(10, 30))
-                
-                if current_gesture and current_action:
-                    draw_gesture_info(
-                        annotated_frame, 
-                        current_gesture, 
-                        current_action,
-                        position=(10, 50),  # 向上调整10像素
-                        font_scale=FONT_SCALE,
-                        color=FONT_COLOR,
-                        thickness=FONT_THICKNESS
-                    )
-                
-                instructions = gesture_recognizer.get_gesture_info()
-                draw_instructions(
-                    annotated_frame,
-                    instructions,
-                    start_position=(10, 440),  # 向上调整10像素
-                    font_scale=0.6,
-                    color=(200, 200, 200),
-                    thickness=1
-                )
-                
-                if DEBUG_MODE:
-                    status = action_executor.get_status()
-                    y_offset = 0
-                    for key, value in status.items():
-                        if key in ['current_volume', 'current_brightness']:
-                            text = f"{key}: {value}"
-                            cv2.putText(
-                                annotated_frame, text,
-                                (annotated_frame.shape[1] - 200, 30 + y_offset),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 100), 1
-                            )
-                            y_offset += 20
-                
+                # 只显示原始的摄像头画面，不添加任何UI元素
                 cv2.imshow("Gesture Control System", annotated_frame)
             
             key = cv2.waitKey(1) & 0xFF
