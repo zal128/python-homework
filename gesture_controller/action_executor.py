@@ -552,3 +552,25 @@ class ActionExecutor:
             status["mouse_frozen"] = "No"
         
         return status
+    
+    def set_mouse_sensitivity(self, sensitivity: float):
+        """设置鼠标灵敏度"""
+        self.mouse_sensitivity = max(1.0, min(20.0, sensitivity))
+        print(f"鼠标灵敏度设置为: {self.mouse_sensitivity}")
+    
+    def set_volume_step(self, step: float):
+        """设置音量调节步长"""
+        global VOLUME_STEP
+        VOLUME_STEP = max(0.01, min(0.2, step))
+        print(f"音量调节步长设置为: {VOLUME_STEP}")
+    
+    def set_brightness_step(self, step: int):
+        """设置亮度调节步长"""
+        global BRIGHTNESS_STEP
+        BRIGHTNESS_STEP = max(1, min(50, step))
+        print(f"亮度调节步长设置为: {BRIGHTNESS_STEP}")
+    
+    def set_scroll_speed(self, speed: int):
+        """设置滚动速度"""
+        self.browser_scroll_speed = max(1, min(20, speed))
+        print(f"浏览器滚动速度设置为: {self.browser_scroll_speed}")

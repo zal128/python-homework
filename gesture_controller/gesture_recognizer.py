@@ -405,3 +405,8 @@ class GestureRecognizer:
         if hasattr(self, 'trajectory_history'):
             self.trajectory_history.clear()
         self.last_hand_position = None
+    
+    def set_cooldown(self, cooldown: float):
+        """设置手势冷却时间"""
+        self.cooldown = max(0.1, min(2.0, cooldown))
+        print(f"手势冷却时间设置为: {self.cooldown}秒")
